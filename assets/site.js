@@ -5,51 +5,41 @@ const storageKey = "left-behind-visited";
 const assetBase = new URL(".", document.currentScript.src);
 
 // ==========================================
-// AUDIO SYSTEM (Ambient, Clicks, & Page Flips)
+// CONTINUOUS AUDIO & PAGE-FLIP SFX SYSTEM
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Setup Background Ambient Audio
+    // 1. Setup Continuous Background Ambient Audio (No button needed)
     const bgMusic = new Audio();
     bgMusic.src = "assets/audio/audiopapkin-ambient-soundscapes-001-space-atmosphere-303246.mp3";
     bgMusic.loop = true;
     bgMusic.volume = 0.3;
 
-    // Create floating audio toggle button
-    const audioBtn = document.createElement('button');
-    audioBtn.innerHTML = "🔇 Space Audio: Off";
-    audioBtn.className = "fixed bottom-4 right-4 z-50 bg-slate-900/90 text-cyan-400 border border-cyan-500/50 px-3.5 py-2 rounded-full text-xs font-mono shadow-xl hover:bg-slate-800 transition backdrop-blur-sm";
-    document.body.appendChild(audioBtn);
-
-    let isPlaying = false;
-    audioBtn.addEventListener('click', () => {
-        if (!isPlaying) {
-            bgMusic.play().then(() => {
-                isPlaying = true;
-                audioBtn.innerHTML = "🔊 Space Audio: On";
-            }).catch(e => console.log("Audio play blocked by browser:", e));
-        } else {
-            bgMusic.pause();
-            isPlaying = false;
-            audioBtn.innerHTML = "🔇 Space Audio: Off";
-        }
+    // Attempt to autoplay immediately (browsers allow this once the user has interacted with the site)
+    bgMusic.play().catch(() => {
+        // Fallback: start audio on the very first user click anywhere on the page if autoplay was blocked
+        const startAudioOnInteraction = () => {
+            bgMusic.play().catch(() => {});
+            document.removeEventListener('click', startAudioOnInteraction);
+        };
+        document.addEventListener('click', startAudioOnInteraction);
     });
 
-    // 2. Setup General Click SFX & Page Flip SFX
-    const clickSound = new Audio();
-    clickSound.src = "assets/audio/dragon-studio-filpping-book-page-499646.mp3"; // using flip sound or general click
-    clickSound.volume = 0.4;
-
+    // 2. Setup Page Flip & Click Sound Effect
     const pageFlipSound = new Audio();
     pageFlipSound.src = "assets/audio/dragon-studio-filpping-book-page-499646.mp3";
     pageFlipSound.volume = 0.5;
 
+    const clickSound = new Audio();
+    clickSound.src = "assets/audio/dragon-studio-filpping-book-page-499646.mp3";
+    clickSound.volume = 0.4;
+
     document.addEventListener('click', (e) => {
-        // Play specific page flip sound when navigating story pages or reader buttons
-        if (e.target.closest('[data-scene-index]') || e.target.closest('[data-prev]') || e.target.closest('[data-next]')) {
+        // Play book-flipping sound effect when interacting with story/reader sections
+        if (e.target.closest('[data-scene-index]') || e.target.closest('[data-prev]') || e.target.closest('[data-next]') || e.target.closest('.story-reader')) {
             pageFlipSound.currentTime = 0;
             pageFlipSound.play().catch(() => {});
         } 
-        // Play standard click sound for other buttons/links
+        // General click sound for buttons/links
         else if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.interactive-card')) {
             clickSound.currentTime = 0;
             clickSound.play().catch(() => {});
