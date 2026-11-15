@@ -71,6 +71,56 @@ document.addEventListener("DOMContentLoaded", () => {
     showMusicState();
     if (musicOn) playMusic(); else bgMusic.pause();
 
+    // Keep the unlocked audio player alive during navigation within the exhibition.
+    if (window === window.parent) {
+        let pageFrame;
+        const originalPage = location.href;
+        const hostSections = [...document.querySelectorAll("body > header, body > main, body > footer, body > .skip")];
+
+        function displayPage(url) {
+            if (!pageFrame) {
+                pageFrame = document.createElement("iframe");
+                pageFrame.title = "Left Behind exhibition";
+                pageFrame.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483647;background:#f8f6f0";
+                pageFrame.src = url;
+                for (const element of hostSections) element.inert = true;
+                document.body.appendChild(pageFrame);
+            } else {
+                pageFrame.contentWindow.location.replace(url);
+            }
+        }
+
+        window.__leftBehindNavigate = url => {
+            if (!pageFrame && bgMusic.paused) return false;
+            history.pushState({ leftBehindPage: url }, "", url);
+            displayPage(url);
+            return true;
+        };
+
+        window.addEventListener("popstate", event => {
+            if (event.state?.leftBehindPage) {
+                displayPage(location.href);
+            } else if (pageFrame && location.href === originalPage) {
+                pageFrame.remove();
+                pageFrame = undefined;
+                for (const element of hostSections) element.inert = false;
+                try { musicOn = localStorage.getItem(musicKey) !== "off"; } catch {}
+                showMusicState();
+            }
+        });
+    }
+
+    document.addEventListener("click", event => {
+        if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        const link = event.target.closest("a[href]");
+        if (!link || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+        const url = new URL(link.href);
+        const current = new URL(location.href);
+        if (url.origin !== location.origin || !url.pathname.startsWith(new URL("../", assetBase).pathname) || !url.pathname.endsWith(".html")) return;
+        if (url.pathname === current.pathname && url.search === current.search) return;
+        if (window.parent.__leftBehindNavigate?.(url.href)) event.preventDefault();
+    });
+
     // 2. Page Flip & Click Sound Effect
     const pageFlipSound = new Audio();
     pageFlipSound.src = new URL("audio/dragon-studio-flipping-book-page-499646.mp3", assetBase).href;
@@ -552,3 +602,4 @@ if (booth) {
   const prompt = "Add up to four photos. Your photos stay on this device.";
   updateStatus(prompt + (visitedStories().length ? "" : " Finish any exhibit to unlock the certificate."));
 }
+
