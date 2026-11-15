@@ -36,6 +36,4 @@ The site uses HTML, CSS, and JavaScript with Three.js for the interactive globes
 
 ## Research and credits
 
-The animated scenes illustrate documented mission history. The golf and laser activities use simplified simulations. The InSight activity uses NASA/JPL-Caltech/CNES’s sonification of recorded seismic data. Individual exhibit pages link to their mission sources, and the [credits page](credits.html) lists project and media acknowledgments. ChatGPT assisted with code, illustrations rendered in code, and story drafts.
-
-"AI/SI Disclosure: Large language models (ChatGPT, Claude, and Google Gemini) were used to assist with JavaScript coding, debugging, and refining educational text." 
+The animated scenes illustrate documented mission history. The golf and laser activities use simplified simulations. The InSight activity uses NASA/JPL-Caltech/CNES's sonification of recorded seismic data. Individual exhibit pages link to their mission sources, and the [credits page](credits.html) lists project and media acknowledgments. **AI/SI Disclosure:** Large language models (ChatGPT, Claude, and Google Gemini) were used to assist with JavaScript coding, debugging, illustrations rendered in code, and refining educational story drafts.
