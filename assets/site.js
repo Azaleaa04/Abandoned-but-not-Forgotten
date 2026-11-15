@@ -4,48 +4,7 @@ const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const storageKey = "left-behind-visited";
 const assetBase = new URL(".", document.currentScript.src);
 
-// ==========================================
-// CONTINUOUS AUDIO & PAGE-FLIP SFX SYSTEM
-// ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-    // 1. Setup Continuous Background Ambient Audio (No button needed)
-    const bgMusic = new Audio();
-    bgMusic.src = "assets/audio/audiopapkin-ambient-soundscapes-001-space-atmosphere-303246.mp3";
-    bgMusic.loop = true;
-    bgMusic.volume = 0.3;
-
-    // Attempt to autoplay immediately (browsers allow this once the user has interacted with the site)
-    bgMusic.play().catch(() => {
-        // Fallback: start audio on the very first user click anywhere on the page if autoplay was blocked
-        const startAudioOnInteraction = () => {
-            bgMusic.play().catch(() => {});
-            document.removeEventListener('click', startAudioOnInteraction);
-        };
-        document.addEventListener('click', startAudioOnInteraction);
-    });
-
-    // 2. Setup Page Flip & Click Sound Effect
-    const pageFlipSound = new Audio();
-    pageFlipSound.src = "assets/audio/dragon-studio-filpping-book-page-499646.mp3";
-    pageFlipSound.volume = 0.5;
-
-    const clickSound = new Audio();
-    clickSound.src = "assets/audio/dragon-studio-filpping-book-page-499646.mp3";
-    clickSound.volume = 0.4;
-
-    document.addEventListener('click', (e) => {
-        // Play book-flipping sound effect when interacting with story/reader sections
-        if (e.target.closest('[data-scene-index]') || e.target.closest('[data-prev]') || e.target.closest('[data-next]') || e.target.closest('.story-reader')) {
-            pageFlipSound.currentTime = 0;
-            pageFlipSound.play().catch(() => {});
-        } 
-        // General click sound for buttons/links
-        else if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.interactive-card')) {
-            clickSound.currentTime = 0;
-            clickSound.play().catch(() => {});
-        }
-    });
-});
+document.addEventListener("mission-complete", event => markStory(event.target.dataset.cartoon));
 
 const themeButton = document.querySelector("[data-theme-switch]");
 if (themeButton) {
@@ -100,7 +59,13 @@ for (const figure of document.querySelectorAll("[data-photo]")) {
   img.alt = photo.alt || img.alt;
   const credit = document.createElement(photo.source ? "a" : "span");
   credit.textContent = photo.credit || "";
-  if (photo.source) credit.href = photo.source;
+  if (photo.source) {
+    credit.href = photo.source;
+    if (new URL(credit.href).origin !== location.origin) {
+      credit.target = "_blank";
+      credit.rel = "noopener noreferrer";
+    }
+  }
   caption.replaceChildren(credit);
   img.loading = "eager";
   img.src = photo.file ? new URL("photos/" + encodeURIComponent(photo.file), assetBase) : photo.url;
@@ -113,75 +78,6 @@ for (const filter of filters) {
     for (const group of document.querySelectorAll("[data-world-group]")) {
       group.hidden = filter.dataset.filter !== "all" && filter.dataset.filter !== group.dataset.worldGroup;
     }
-  });
-}
-
-for (const reader of document.querySelectorAll("[data-reader]")) {
-  const scenes = [...reader.querySelectorAll(".scene")];
-  const choices = [...reader.querySelectorAll("[data-scene-index]")];
-  const prev = reader.querySelector("[data-prev]");
-  const next = reader.querySelector("[data-next]");
-  const counter = reader.querySelector("[data-counter]");
-  let position = 0;
-  const read = new Set([0]);
-
-  function show(index, animate = true) {
-    if (index < 0 || index >= scenes.length) return;
-    position = index;
-    read.add(index);
-    if (read.size === scenes.length) markStory(reader.dataset.story);
-    scenes.forEach((scene, i) => { scene.hidden = i !== index; });
-    for (const choice of choices) {
-      choice.setAttribute("aria-pressed", String(Number(choice.dataset.sceneIndex) === index));
-    }
-    if (prev) prev.disabled = index === 0;
-    if (next) next.disabled = index === scenes.length - 1;
-    if (counter) counter.textContent = "Page " + (index + 1) + " of " + scenes.length;
-    if (animate && !reducedMotion.matches && scenes[index].animate) {
-      const frames = [{ transform: "rotateY(-25deg)", opacity: .35 }, { transform: "rotateY(0)", opacity: 1 }];
-      scenes[index].animate(frames, { duration: 340, easing: "ease-out" });
-    }
-  }
-
-  prev?.addEventListener("click", () => show(position - 1));
-  next?.addEventListener("click", () => show(position + 1));
-  for (const choice of choices) choice.addEventListener("click", () => show(Number(choice.dataset.sceneIndex)));
-  show(0, false);
-}
-
-for (const block of document.querySelectorAll("[data-stage-block]")) {
-  const stage = block.querySelector("[data-craft]");
-  const buttons = [...block.querySelectorAll("[data-stage-action]")];
-  const feedback = block.querySelector(".stage-feedback");
-  const angleControl = block.querySelector("[data-stage-angle]");
-  let replay;
-  function pose(angle, step) {
-    const progress = step / 2;
-    stage.style.setProperty("--progress", progress);
-    stage.style.setProperty("--turn", -angle + "deg");
-    stage.style.setProperty("--hop", step === 1 ? .85 : 0);
-    stage.style.setProperty("--frame", step);
-    stage.dataset.step = String(step);
-  }
-  for (const button of buttons) {
-    button.addEventListener("click", () => {
-      const step = Number(button.dataset.stageAction);
-      const angle = step * 90;
-      if (angleControl) angleControl.value = angle;
-      pose(angle, step);
-      stage.classList.add("is-open");
-      stage.classList.remove("is-playing");
-      cancelAnimationFrame(replay);
-      replay = requestAnimationFrame(() => { replay = requestAnimationFrame(() => stage.classList.add("is-playing")); });
-      for (const choice of buttons) choice.setAttribute("aria-pressed", String(choice === button));
-      feedback.textContent = button.dataset.description;
-    });
-  }
-  angleControl?.addEventListener("input", () => {
-    const angle = Number(angleControl.value);
-    pose(angle, Math.min(2, Math.round(angle / 90) % 4));
-    for (const choice of buttons) choice.setAttribute("aria-pressed", "false");
-    feedback.textContent = "Carousel angle: " + angle + "°.";
   });
 }
 
@@ -249,6 +145,27 @@ for (const lab of document.querySelectorAll("[data-laser]")) {
   });
 }
 
+const labPicker = document.getElementById("lab-activity");
+if (labPicker) {
+  const labCards = [...document.querySelectorAll(".single-activity > .work-card")];
+  function selectActivity() {
+    const match = labCards.find(card => "#" + card.id === location.hash);
+    const active = match?.id || labCards[0].id;
+    for (const card of labCards) {
+      const visible = card.id === active;
+      if (!visible && !card.hidden) card.dispatchEvent(new Event("activity-hidden"));
+      card.hidden = !visible;
+    }
+    labPicker.value = active;
+  }
+  labPicker.addEventListener("change", () => {
+    history.replaceState(null, "", "#" + labPicker.value);
+    selectActivity();
+  });
+  window.addEventListener("hashchange", selectActivity);
+  selectActivity();
+}
+
 const launch = document.getElementById("separate");
 if (launch) {
   const diagram = document.querySelector(".separation");
@@ -265,87 +182,6 @@ if (launch) {
   });
 }
 
-const quakePlay = document.getElementById("play-quake");
-if (quakePlay) {
-  const quakeStop = document.getElementById("stop-quake");
-  const trace = document.querySelector(".quake-trace");
-  const status = document.getElementById("quake-result");
-  const duration = 3.1;
-  let sound, timer, context, sequence = 0;
-  function finish(text) {
-    clearTimeout(timer);
-    if (sound) {
-      try { sound.stop(); } catch {}
-      sound.disconnect();
-      sound = null;
-    }
-    trace.classList.remove("is-playing");
-    quakePlay.disabled = false;
-    quakeStop.disabled = true;
-    status.textContent = text;
-  }
-  quakeStop.addEventListener("click", () => { sequence++; finish("Playback stopped."); });
-  quakePlay.addEventListener("click", async () => {
-    const id = ++sequence;
-    quakePlay.disabled = true;
-    quakeStop.disabled = false;
-    let audible = false;
-    try {
-      context ||= new AudioContext();
-      await context.resume();
-      if (id !== sequence) return;
-      const buffer = context.createBuffer(1, Math.ceil(duration * context.sampleRate), context.sampleRate);
-      const samples = buffer.getChannelData(0);
-      for (let i = 0; i < samples.length; i++) {
-        const t = i / context.sampleRate;
-        const event = Math.max(0, t - 1.18);
-        const swell = (1 - Math.exp(-event * 11)) * Math.exp(-event * 2.2);
-        samples[i] = (Math.sin(t * 260) + .43 * Math.sin(t * 520)) * swell * .18 + (Math.random() - .5) * .013;
-      }
-      sound = context.createBufferSource();
-      sound.buffer = buffer;
-      sound.connect(context.destination);
-      sound.start();
-      audible = true;
-    } catch {
-      // The visual trace remains available when audio playback is blocked.
-    }
-    if (id !== sequence) return;
-    trace.classList.add("is-playing");
-    status.textContent = audible ? "Playing a simulated marsquake. Listen for the stronger shaking." : "Showing the trace. Audio is unavailable.";
-    timer = setTimeout(() => finish("The strongest shaking arrives after the quiet baseline."), duration * 1000);
-  });
-  window.addEventListener("pagehide", () => { sequence++; finish(""); });
-}
-
-const golf = document.getElementById("golf-angle");
-if (golf) {
-  golf.addEventListener("input", () => { document.getElementById("golf-angle-value").value = golf.value + "°"; });
-  document.getElementById("golf-hit").addEventListener("click", () => {
-    const angle = Number(golf.value) * Math.PI / 180;
-    const distance = (8 ** 2) * Math.sin(2 * angle) / 1.62;
-    const ball = document.querySelector(".golf-track i");
-    ball.getAnimations?.().forEach(animation => animation.cancel());
-    const finish = 5 + distance / 40 * 84;
-    if (!reducedMotion.matches && ball.animate) {
-      ball.animate([{left:"5%",bottom:"6px"},{left:(5 + finish) / 2 + "%",bottom:(17 + Math.sin(angle) * 60) + "px"},{left:finish + "%",bottom:"6px"}],{duration:700,fill:"forwards"});
-    } else {
-      ball.style.left = finish + "%";
-    }
-    document.getElementById("golf-result").textContent = "Simulated range: " + distance.toFixed(1) + " m. Try a different angle.";
-  });
-}
-const scan = document.getElementById("viking-scan");
-if (scan) {
-  let strips = 0;
-  function renderScan() {
-    document.querySelector(".scan-image").style.setProperty("--unseen", (6 - strips) / 6 * 100 + "%");
-    document.getElementById("viking-result").textContent = strips + " of 6 strips";
-    scan.disabled = strips === 6;
-  }
-  scan.addEventListener("click", () => { strips++; renderScan(); });
-  document.getElementById("viking-reset").addEventListener("click", () => { strips = 0; renderScan(); });
-}
 const booth = document.querySelector("[data-booth]");
 if (booth) {
   const get = id => document.getElementById(id);
@@ -375,7 +211,7 @@ if (booth) {
   const requested = new URLSearchParams(location.search).get("exhibit");
   if (Object.hasOwn(window.EXHIBITS, requested)) {
     exhibit.value = requested;
-    if (window.EXHIBITS[requested].world === "Mars") frame.value = "mars";
+
   }
 
   function cover(image, x, y, width, height, filter) {
@@ -396,8 +232,14 @@ if (booth) {
     story: {width:720,height:1280,columns:2,cell:482}
   };
   const addOns = ["booth-size","booth-border","booth-date","booth-fact","booth-caption"];
+  const souvenirArt = document.createElement("canvas");
+  souvenirArt.width = 900;
+  souvenirArt.height = 480;
   function draw() {
-    const theme = frames[frame.value];
+    const mission = frame.value === "mission" && window.CartoonExhibits?.[exhibit.value];
+    const theme = mission
+      ? {paper:mission[0],ink:"#fff8eb",panel:"#100d2d",line:mission[1],filter:"none"}
+      : frames[frame.value] || frames.midnight;
     const record = window.EXHIBITS[exhibit.value];
     const layout = layouts[get("booth-size").value];
     const {width,height,columns,cell} = layout;
@@ -408,6 +250,39 @@ if (booth) {
     const frameWidth = (width - padding * 2 - (columns - 1) * gap) / columns;
     ctx.fillStyle = theme.paper;
     ctx.fillRect(0, 0, width, height);
+    if (mission) {
+      missionArt(souvenirArt, exhibit.value, 1.2);
+      ctx.save();
+      ctx.globalAlpha = .43;
+      const margin = 6;
+      ctx.strokeStyle = mission[1];
+      ctx.lineWidth = 3;
+      ctx.strokeRect(margin, margin, width - 2 * margin, height - 2 * margin);
+      ctx.globalAlpha = 1;
+      const motif = Object.keys(window.CartoonExhibits).indexOf(exhibit.value);
+      for (let i = 0; i < 12; i++) {
+        const y = 102 + i * (height - 155) / 11;
+        for (const x of [18,width - 18]) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate((motif * 19 + i * 27) * Math.PI / 180);
+          ctx.beginPath();
+          const sides = 3 + motif % 6;
+          for (let j = 0; j < sides; j++) {
+            const angle = j * Math.PI * 2 / sides;
+            const radius = 4 + (j + motif) % 3;
+            if (j === 0) ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            else ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          }
+          ctx.closePath(); ctx.stroke(); ctx.restore();
+        }
+      }
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(width - 134, 10, 120, 64, 12); ctx.clip();
+      ctx.drawImage(souvenirArt,width - 134,10,120,64);
+      ctx.restore();
+      ctx.restore();
+    }
     ctx.fillStyle = theme.ink;
     ctx.font = "bold 32px monospace";
     ctx.fillText("LEFT BEHIND", padding, 46);
@@ -429,6 +304,11 @@ if (booth) {
       const y = 92 + Math.floor(i / columns) * (cell + gap);
       ctx.fillStyle = theme.panel;
       ctx.fillRect(x, y, frameWidth, cell);
+      if (mission) {
+        ctx.strokeStyle = mission[1];
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 2, y - 2, frameWidth + 4, cell + 4);
+      }
       if (photos[i]) {
         cover(photos[i], x, y, frameWidth, cell, theme.filter);
       } else {
@@ -476,7 +356,7 @@ if (booth) {
     status.textContent = message;
     capture.disabled = photos.length >= 4;
     certificate.disabled = visitedStories().length === 0;
-    certificate.title = certificate.disabled ? "Finish any exhibit to unlock your certificate" : "";
+    certificate.title = certificate.disabled ? "Watch a mission animation to the end to unlock your certificate" : "";
     draw();
   }
 
@@ -558,7 +438,7 @@ if (booth) {
     }, "image/png");
   }
 
-  exhibit.addEventListener("change", draw);
+  exhibit.addEventListener("change", () => { frame.value = "mission"; draw(); });
   frame.addEventListener("change", draw);
   name.addEventListener("input", draw);
   for (const option of addOns) get(option).addEventListener("input", draw);
