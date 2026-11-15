@@ -4,6 +4,58 @@ const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const storageKey = "left-behind-visited";
 const assetBase = new URL(".", document.currentScript.src);
 
+// ==========================================
+// PERSISTENT AUDIO & CUSTOM ROCKET CURSOR
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Persistent Continuous Audio (75% volume, survives page changes)
+    let bgMusic = window.parent?.__spaceAudio || document.getElementById("persistent-space-audio");
+    
+    if (!bgMusic) {
+        bgMusic = document.createElement("audio");
+        bgMusic.id = "persistent-space-audio";
+        bgMusic.src = "assets/audio/audiopapkin-ambient-soundscapes-001-space-atmosphere-303246.mp3";
+        bgMusic.loop = true;
+        bgMusic.volume = 0.75; // 75% loudness
+        document.body.appendChild(bgMusic);
+
+        // Restore playback time from sessionStorage if navigating between pages
+        const savedTime = sessionStorage.getItem("space_audio_time");
+        if (savedTime) {
+            bgMusic.currentTime = parseFloat(savedTime);
+        }
+
+        bgMusic.play().catch(() => {
+            const startAudio = () => {
+                bgMusic.play().catch(() => {});
+                document.removeEventListener("click", startAudio);
+            };
+            document.addEventListener("click", startAudio);
+        });
+
+        // Save current audio playback time continuously
+        setInterval(() => {
+            if (!bgMusic.paused) {
+                sessionStorage.setItem("space_audio_time", bgMusic.currentTime);
+            }
+        }, 500);
+
+        window.parent.__spaceAudio = bgMusic;
+    }
+
+    // 2. Page Flip & Click Sound Effect
+    const pageFlipSound = new Audio();
+    pageFlipSound.src = "assets/audio/dragon-studio-filpping-book-page-499646.mp3";
+    pageFlipSound.volume = 0.5;
+
+    document.addEventListener("click", (e) => {
+        if (e.target.closest("[data-scene-index]") || e.target.closest("[data-prev]") || e.target.closest("[data-next]") || e.target.closest(".story-reader") || e.target.closest("button") || e.target.closest("a")) {
+            pageFlipSound.currentTime = 0;
+            pageFlipSound.play().catch(() => {});
+        }
+    });
+});
+
 document.addEventListener("mission-complete", event => markStory(event.target.dataset.cartoon));
 
 const themeButton = document.querySelector("[data-theme-switch]");
@@ -202,7 +254,6 @@ if (booth) {
   const requested = new URLSearchParams(location.search).get("exhibit");
   if (Object.hasOwn(window.EXHIBITS, requested)) {
     exhibit.value = requested;
-
   }
 
   function cover(image, x, y, width, height) {
@@ -431,6 +482,7 @@ if (booth) {
   exhibit.addEventListener("change", draw);
   name.addEventListener("input", draw);
   for (const option of addOns) get(option).addEventListener("input", draw);
+  get("clear-photos").ensureEventListener?.("click", () => {});
   get("clear-photos").addEventListener("click", () => {
     photoRevision++;
     photos.length = 0;

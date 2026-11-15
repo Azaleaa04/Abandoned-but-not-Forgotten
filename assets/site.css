@@ -252,3 +252,8 @@ body{isolation:isolate}body::before{content:"";position:fixed;inset:0;z-index:-1
 .work-card .signal-track i { background:#fff8c2; box-shadow:0 0 8px 3px #f3a5ff }
 .work-card .signal-track span:first-child { color:#95f4ea }
 .work-card .signal-track span:last-child { color:#ffe4b4 }
+
+/* Custom Rocket Cursor */
+body, button, a, input, select, textarea {
+    cursor: url('rocket-removebg-preview.png') 16 16, auto;
+}
