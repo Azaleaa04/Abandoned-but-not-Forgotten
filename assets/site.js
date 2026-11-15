@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     //    The 🔊 button in the header turns it on and off. The choice is remembered.
     const musicKey = "left-behind-music";
     let musicOn = true;
-    try { musicOn = localStorage.getItem(musicKey) !== "on"; } catch {}
+    try { musicOn = localStorage.getItem(musicKey) !== "off"; } catch {}
 
     let bgMusic = window.parent?.__spaceAudio || document.getElementById("persistent-space-audio");
     if (!bgMusic) {
