@@ -8,13 +8,17 @@ const assetBase = new URL(".", document.currentScript.src);
 // PERSISTENT AUDIO & CUSTOM ROCKET CURSOR
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Persistent Continuous Audio (75% volume, survives page changes)
+    // 1. Background music (75% volume, keeps its place between pages)
+    //    The 🔊 button in the header turns it on and off. The choice is remembered.
+    const musicKey = "left-behind-music";
+    let musicOn = true;
+    try { musicOn = localStorage.getItem(musicKey) !== "on"; } catch {}
+
     let bgMusic = window.parent?.__spaceAudio || document.getElementById("persistent-space-audio");
-    
     if (!bgMusic) {
         bgMusic = document.createElement("audio");
         bgMusic.id = "persistent-space-audio";
-        bgMusic.src = "assets/audio/audiopapkin-ambient-soundscapes-001-space-atmosphere-303246.mp3";
+        bgMusic.src = new URL("audio/audiopapkin-ambient-soundscapes-001-space-atmosphere-303246.mp3", assetBase).href;
         bgMusic.loop = true;
         bgMusic.volume = 0.75; // 75% loudness
         document.body.appendChild(bgMusic);
@@ -25,14 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
             bgMusic.currentTime = parseFloat(savedTime);
         }
 
-        bgMusic.play().catch(() => {
-            const startAudio = () => {
-                bgMusic.play().catch(() => {});
-                document.removeEventListener("click", startAudio);
-            };
-            document.addEventListener("click", startAudio);
-        });
-
         // Save current audio playback time continuously
         setInterval(() => {
             if (!bgMusic.paused) {
@@ -40,16 +36,51 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }, 500);
 
-        window.parent.__spaceAudio = bgMusic;
+        try { window.parent.__spaceAudio = bgMusic; } catch {}
     }
+
+    // Music on/off button, placed next to the theme button on every page
+    const musicButton = document.createElement("button");
+    musicButton.type = "button";
+    musicButton.className = "music-toggle";
+    const themeSwitch = document.querySelector("[data-theme-switch]");
+    if (themeSwitch) themeSwitch.before(musicButton);
+    else document.body.appendChild(musicButton);
+
+    function showMusicState() {
+        musicButton.textContent = musicOn ? "🔊" : "🔇";
+        musicButton.setAttribute("aria-pressed", String(musicOn));
+        musicButton.setAttribute("aria-label", musicOn ? "Music on. Click to turn music off." : "Music off. Click to turn music on.");
+        musicButton.title = musicOn ? "Music on" : "Music off";
+    }
+    function playMusic() {
+        // Browsers only allow sound after the visitor clicks, so wait for the first click if needed
+        bgMusic.play().catch(() => {
+            const startAudio = event => {
+                if (musicOn && !musicButton.contains(event.target)) bgMusic.play().catch(() => {});
+            };
+            document.addEventListener("click", startAudio, { once: true });
+        });
+    }
+    musicButton.addEventListener("click", () => {
+        musicOn = !musicOn;
+        try { localStorage.setItem(musicKey, musicOn ? "on" : "off"); } catch {}
+        if (musicOn) playMusic(); else bgMusic.pause();
+        showMusicState();
+    });
+    showMusicState();
+    if (musicOn) playMusic(); else bgMusic.pause();
 
     // 2. Page Flip & Click Sound Effect
     const pageFlipSound = new Audio();
-    pageFlipSound.src = "assets/audio/dragon-studio-filpping-book-page-499646.mp3";
+    pageFlipSound.src = new URL("audio/dragon-studio-flipping-book-page-499646.mp3", assetBase).href;
     pageFlipSound.volume = 0.5;
 
+    // Only play the page-flip sound when moving to another part of a story
+    // (Previous / Next, or a chapter button), not on every button.
     document.addEventListener("click", (e) => {
-        if (e.target.closest("[data-scene-index]") || e.target.closest("[data-prev]") || e.target.closest("[data-next]") || e.target.closest(".story-reader") || e.target.closest("button") || e.target.closest("a")) {
+        const turn = e.target.closest("[data-prev-film], [data-next-film], button[data-chapter], [data-scene-index], [data-prev], [data-next]");
+        if (turn) {
             pageFlipSound.currentTime = 0;
             pageFlipSound.play().catch(() => {});
         }

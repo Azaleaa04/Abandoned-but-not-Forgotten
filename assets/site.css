@@ -255,5 +255,10 @@ body{isolation:isolate}body::before{content:"";position:fixed;inset:0;z-index:-1
 
 /* Custom Rocket Cursor */
 body, button, a, input, select, textarea {
-    cursor: url('rocket-removebg-preview.png') 16 16, auto;
+    cursor: url('photos/rocket-cursor.png') 20 20, auto;
 }
+
+/* Music on/off button (added next to the theme button) */
+.music-toggle{display:grid;place-items:center;flex:0 0 auto;width:44px;height:44px;padding:0;margin-left:4px;background:transparent;border:1px solid var(--line);border-radius:50%;font-size:1.15rem;line-height:1;cursor:pointer;transition:transform .15s,background .2s}
+.music-toggle:hover{transform:translateY(-1px);background:color-mix(in srgb,var(--line) 35%,transparent)}
+.music-toggle[aria-pressed="false"]{opacity:.65}
